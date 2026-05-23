@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spoken Word</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,900;1,400;1,700&family=Space+Mono:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #0a0a0f;
+    --paper: #f5f0e8;
+    --red: #c0392b;
+    --gold: #b8860b;
+    --fade: #d4cfc4;
+  }
+
+  html, body {
+    width: 100%; min-height: 100vh;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Space Mono', monospace;
+    overflow-x: hidden;
+    cursor: crosshair;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 999; opacity: 0.6;
+  }
+
+  body::after {
+    content: '';
+    position: fixed; top: 0; left: 0; right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, transparent 0%, var(--red) 30%, var(--ink) 60%, transparent 100%);
+    z-index: 100;
+  }
+
+  .stage {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 80px 40px 120px;
+    position: relative;
+  }
+
+  .header {
+    display: flex; align-items: flex-start; gap: 24px;
+    margin-bottom: 80px; opacity: 0;
+    animation: rise 1s ease forwards 0.2s;
+  }
+
+  .header-line {
+    width: 3px; height: 80px;
+    background: linear-gradient(to bottom, var(--red), transparent);
+    flex-shrink: 0; margin-top: 8px;
+  }
+
+  .header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.4rem, 7vw, 5rem);
+    font-weight: 900; line-height: 0.95; letter-spacing: -0.02em;
+  }
+
+  .header h1 em { font-style: italic; color: var(--red); }
+
+  .tagline {
+    font-size: 0.7rem; letter-spacing: 0.25em; text-transform: uppercase;
+    color: var(--gold); margin-top: 16px; opacity: 0;
+    animation: rise 1s ease forwards 0.6s;
+  }
+
+  .tabs {
+    display: flex; margin-bottom: 60px; border-bottom: 1px solid var(--ink);
+    opacity: 0; animation: rise 1s ease forwards 0.8s; overflow-x: auto;
+  }
+
+  .tab {
+    padding: 12px 20px; font-family: 'Space Mono', monospace;
+    font-size: 0.65rem; letter-spacing: 0.12em; text-transform: uppercase;
+    background: none; border: none; border-bottom: 3px solid transparent;
+    cursor: pointer; color: var(--fade); margin-bottom: -1px;
+    transition: all 0.2s; white-space: nowrap;
+  }
+
+  .tab:hover { color: var(--ink); }
+  .tab.active { color: var(--red); border-bottom-color: var(--red); }
+
+  .tab-badge {
+    display: inline-block; background: var(--red); color: var(--paper);
+    font-size: 0.5rem; padding: 1px 5px; border-radius: 10px;
+    margin-left: 6px; vertical-align: middle; line-height: 1.6;
+    transition: background 0.4s;
+  }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ── TELL ── */
+  .poem-block { opacity: 0; animation: rise 0.8s ease forwards; }
+  .poem-stanza { margin-bottom: 48px; }
+  .poem-line {
+    font-family: 'Playfair Display', serif; font-size: clamp(1.1rem, 3vw, 1.5rem);
+    line-height: 1.6; font-weight: 400; display: block;
+  }
+  .poem-line.bold { font-weight: 900; }
+  .poem-line.italic { font-style: italic; }
+  .poem-line.big { font-size: clamp(1.6rem, 5vw, 2.8rem); font-weight: 900; line-height: 1.1; }
+  .poem-line.red { color: var(--red); }
+  .poem-line.indent { padding-left: 2em; }
+  .poem-line.indent2 { padding-left: 4em; }
+  .poem-line .beat { display: inline-block; width: 2em; height: 2px; background: var(--red); vertical-align: middle; margin: 0 8px; }
+  .aside { font-size: 0.7rem; letter-spacing: 0.1em; color: var(--gold); text-transform: uppercase; display: block; margin-top: 4px; }
+
+  /* ── TEACH ── */
+  .cards { display: grid; gap: 24px; }
+  .card {
+    border: 1px solid var(--ink); padding: 32px; background: var(--paper);
+    transition: transform 0.2s, box-shadow 0.2s; opacity: 0; animation: rise 0.6s ease forwards;
+  }
+  .card:nth-child(1){animation-delay:0.1s}.card:nth-child(2){animation-delay:0.2s}
+  .card:nth-child(3){animation-delay:0.3s}.card:nth-child(4){animation-delay:0.4s}
+  .card:nth-child(5){animation-delay:0.5s}
+  .card:hover { transform: translate(-4px,-4px); box-shadow: 6px 6px 0 var(--ink); }
+  .card-num { font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--red); margin-bottom: 12px; }
+  .card h3 { font-family: 'Playfair Display', serif; font-size: 1.3rem; font-weight: 900; margin-bottom: 12px; }
+  .card p { font-size: 0.78rem; line-height: 1.8; color: #444; }
+  .card .example { margin-top: 16px; padding: 12px 16px; border-left: 3px solid var(--red); font-family: 'Playfair Display', serif; font-style: italic; font-size: 0.95rem; background: rgba(192,57,43,0.04); }
+
+  /* ── PITCH ── */
+  .manifesto { display: grid; gap: 32px; }
+  .manif-item { display: grid; grid-template-columns: 60px 1fr; gap: 24px; align-items: start; opacity: 0; animation: rise 0.7s ease forwards; }
+  .manif-item:nth-child(1){animation-delay:0.05s}.manif-item:nth-child(2){animation-delay:0.15s}
+  .manif-item:nth-child(3){animation-delay:0.25s}.manif-item:nth-child(4){animation-delay:0.35s}
+  .manif-item:nth-child(5){animation-delay:0.45s}.manif-item:nth-child(6){animation-delay:0.55s}
+  .manif-num { font-family: 'Playfair Display', serif; font-size: 3rem; font-weight: 900; color: var(--fade); line-height: 1; text-align: right; }
+  .manif-body h3 { font-family: 'Playfair Display', serif; font-size: 1.2rem; font-weight: 700; margin-bottom: 8px; }
+  .manif-body p { font-size: 0.78rem; line-height: 1.9; color: #555; }
+  .manif-body strong { color: var(--red); }
+
+  /* ── STITCH ── */
+  .write-area { opacity: 0; animation: rise 0.7s ease forwards 0.1s; }
+
+  .write-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+
+  .write-prompt { font-family: 'Playfair Display', serif; font-size: 1.3rem; font-style: italic; color: var(--red); line-height: 1.4; flex: 1; }
+
+  .save-status { font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--fade); white-space: nowrap; padding-top: 6px; transition: color 0.4s; }
+  .save-status.ok { color: var(--gold); }
+
+  .title-input {
+    width: 100%; border: none; border-bottom: 1px solid var(--fade);
+    background: transparent; font-family: 'Playfair Display', serif;
+    font-size: 1rem; font-style: italic; color: var(--ink);
+    padding: 8px 0; margin-bottom: 16px; outline: none; transition: border-color 0.2s;
+  }
+  .title-input:focus { border-bottom-color: var(--ink); }
+  .title-input::placeholder { color: var(--fade); }
+
+  .write-controls { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+
+  .btn {
+    padding: 10px 18px; font-family: 'Space Mono', monospace; font-size: 0.63rem;
+    letter-spacing: 0.13em; text-transform: uppercase; border: 1px solid var(--ink);
+    background: none; cursor: pointer; color: var(--ink); transition: all 0.15s;
+  }
+  .btn:hover { background: var(--ink); color: var(--paper); }
+  .btn.red-btn { border-color: var(--red); color: var(--red); }
+  .btn.red-btn:hover { background: var(--red); color: var(--paper); }
+  .btn.ghost { border-color: var(--fade); color: var(--fade); }
+  .btn.ghost:hover { border-color: var(--ink); color: var(--ink); background: none; }
+
+  textarea {
+    width: 100%; min-height: 300px; border: 1px solid var(--ink);
+    background: transparent; font-family: 'Playfair Display', serif;
+    font-size: 1.1rem; line-height: 1.8; padding: 24px; color: var(--ink);
+    resize: vertical; outline: none; transition: box-shadow 0.2s;
+  }
+  textarea:focus { box-shadow: 4px 4px 0 var(--ink); }
+  textarea::placeholder { color: var(--fade); font-style: italic; }
+
+  .write-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+  .counter { font-size: 0.63rem; letter-spacing: 0.1em; color: var(--gold); }
+
+  .prompts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 32px; }
+
+  .prompt-chip {
+    padding: 14px 18px; border: 1px dashed var(--fade);
+    font-family: 'Playfair Display', serif; font-style: italic;
+    font-size: 0.88rem; color: #666; cursor: pointer;
+    transition: all 0.2s; background: none; text-align: left; line-height: 1.4;
+  }
+  .prompt-chip:hover { border-color: var(--red); color: var(--red); border-style: solid; }
+
+  /* ── LIBRARY ── */
+  .library-area { opacity: 0; animation: rise 0.7s ease forwards 0.1s; }
+
+  .library-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+
+  .lib-stats { font-size: 0.63rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--gold); }
+
+  .lib-search {
+    width: 100%; border: none; border-bottom: 1px solid var(--fade);
+    background: transparent; font-family: 'Space Mono', monospace;
+    font-size: 0.75rem; color: var(--ink); padding: 8px 0; margin-bottom: 32px;
+    outline: none; transition: border-color 0.2s;
+  }
+  .lib-search:focus { border-bottom-color: var(--ink); }
+  .lib-search::placeholder { color: var(--fade); }
+
+  .lib-empty { text-align: center; padding: 80px 0; color: var(--fade); }
+  .lib-empty p { font-family: 'Playfair Display', serif; font-style: italic; font-size: 1.1rem; margin-bottom: 8px; }
+  .lib-empty small { font-size: 0.63rem; letter-spacing: 0.1em; text-transform: uppercase; }
+
+  .lib-list { display: grid; gap: 0; }
+
+  .lib-entry {
+    border-top: 1px solid var(--fade); padding: 20px 0;
+    display: grid; grid-template-columns: 1fr auto;
+    gap: 16px; align-items: start; cursor: pointer;
+    transition: padding-left 0.2s;
+  }
+  .lib-entry:last-child { border-bottom: 1px solid var(--fade); }
+  .lib-entry:hover { padding-left: 8px; }
+  .lib-entry:hover .lib-title { color: var(--red); }
+
+  .lib-title { font-family: 'Playfair Display', serif; font-size: 1.05rem; font-weight: 700; margin-bottom: 4px; transition: color 0.2s; }
+  .lib-meta { font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); margin-bottom: 6px; }
+  .lib-preview { font-family: 'Playfair Display', serif; font-style: italic; font-size: 0.83rem; color: #888; line-height: 1.5; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+  .lib-actions { display: flex; gap: 8px; flex-shrink: 0; padding-top: 2px; }
+
+  .lib-btn {
+    font-family: 'Space Mono', monospace; font-size: 0.55rem;
+    letter-spacing: 0.1em; text-transform: uppercase; background: none;
+    border: 1px solid var(--fade); padding: 6px 10px; cursor: pointer;
+    color: var(--fade); transition: all 0.15s;
+  }
+  .lib-btn:hover { border-color: var(--ink); color: var(--ink); }
+  .lib-btn.del:hover { border-color: var(--red); color: var(--red); }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(10,10,15,0.72); z-index: 900;
+    align-items: center; justify-content: center; padding: 24px;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--paper); max-width: 640px; width: 100%;
+    max-height: 82vh; overflow-y: auto; padding: 48px;
+    position: relative; animation: rise 0.3s ease forwards;
+  }
+
+  .modal-close {
+    position: absolute; top: 20px; right: 20px; background: none; border: none;
+    font-family: 'Space Mono', monospace; font-size: 0.63rem; letter-spacing: 0.1em;
+    cursor: pointer; color: var(--fade); text-transform: uppercase;
+  }
+  .modal-close:hover { color: var(--red); }
+
+  .modal-meta { font-size: 0.6rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--gold); margin-bottom: 6px; }
+  .modal-prompt-text { font-size: 0.75rem; color: var(--fade); margin-bottom: 28px; font-style: italic; font-family: 'Playfair Display', serif; }
+  .modal-title { font-family: 'Playfair Display', serif; font-size: 1.8rem; font-weight: 900; margin-bottom: 32px; line-height: 1.2; }
+  .modal-body { font-family: 'Playfair Display', serif; font-size: 1.05rem; line-height: 1.9; white-space: pre-wrap; }
+
+  .modal-footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--fade); display: flex; gap: 12px; }
+
+  .section-label { font-size: 0.63rem; letter-spacing: 0.25em; text-transform: uppercase; color: var(--gold); margin-bottom: 16px; display: block; }
+
+  .footer {
+    margin-top: 100px; padding-top: 32px; border-top: 1px solid var(--fade);
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 0.63rem; letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--fade); opacity: 0; animation: rise 1s ease forwards 1.2s;
+  }
+  .footer span { color: var(--red); }
+
+  .deco-circle {
+    position: fixed; top: -60px; right: -60px; width: 240px; height: 240px;
+    border-radius: 50%; border: 1px solid rgba(192,57,43,0.12); pointer-events: none;
+    animation: pulse 6s ease-in-out infinite;
+  }
+  .deco-circle:nth-child(2) { width: 400px; height: 400px; top: -120px; right: -120px; animation-delay: 1s; }
+
+  @keyframes rise { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes pulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.05);opacity:0.5} }
+
+  @media(max-width:600px){
+    .stage{padding:48px 24px 80px;}
+    .prompts-grid{grid-template-columns:1fr;}
+    .tab{padding:10px 12px;font-size:0.58rem;}
+    .modal{padding:32px 20px;}
+    .manif-item{grid-template-columns:40px 1fr;gap:16px;}
+    .manif-num{font-size:2rem;}
+  }
+</style>
+</head>
+<body>
+
+<div class="deco-circle"></div>
+<div class="deco-circle"></div>
+
+<!-- Read modal -->
+<div class="modal-overlay" id="modal" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕ Close</button>
+    <div class="modal-meta" id="modal-meta"></div>
+    <div class="modal-prompt-text" id="modal-prompt-text"></div>
+    <div class="modal-title" id="modal-title"></div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="editEntry()">Edit in Stitch</button>
+      <button class="btn ghost" onclick="copyModal()">Copy text</button>
+    </div>
+  </div>
+</div>
+
+<div class="stage">
+
+  <div class="header">
+    <div class="header-line"></div>
+    <div><h1>Spoken<br><em>Word</em></h1></div>
+  </div>
+
+  <p class="tagline">Tell &bull; Teach &bull; Pitch &bull; Stitch &bull; Library</p>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('tell',this)">Tell</button>
+    <button class="tab" onclick="switchTab('teach',this)">Teach</button>
+    <button class="tab" onclick="switchTab('pitch',this)">Pitch</button>
+    <button class="tab" onclick="switchTab('stitch',this)">Stitch</button>
+    <button class="tab" onclick="switchTab('library',this)">Library <span class="tab-badge" id="lib-count">0</span></button>
+  </div>
+
+  <!-- TELL -->
+  <div id="tab-tell" class="panel active">
+    <div class="poem-block">
+      <div class="poem-stanza">
+        <span class="poem-line big">The mouth is a room</span>
+        <span class="poem-line italic indent">where every word you've swallowed</span>
+        <span class="poem-line italic indent2">finally gets a window.</span>
+      </div>
+      <div class="poem-stanza">
+        <span class="poem-line bold red">Tell me.</span>
+        <span class="poem-line indent">Not the cleaned-up version.</span>
+        <span class="poem-line indent">Not the version you rehearsed</span>
+        <span class="poem-line indent">in the shower at 2 a.m.</span>
+        <span class="poem-line bold indent">Tell me the raw draft.</span>
+        <span class="aside indent">— the one with the crossed-out parts still visible</span>
+      </div>
+      <div class="poem-stanza">
+        <span class="poem-line">There is a voice that lives</span>
+        <span class="poem-line">below the voice you use</span>
+        <span class="poem-line">at dinner parties<span class="beat"></span>job interviews<span class="beat"></span>funerals.</span>
+        <span class="poem-line bold red" style="margin-top:16px">That one.</span>
+        <span class="poem-line italic indent">That's the one we came to hear.</span>
+      </div>
+      <div class="poem-stanza">
+        <span class="poem-line big" style="color:var(--red)">Spoken word</span>
+        <span class="poem-line big">is not performance.</span>
+        <span class="poem-line italic" style="margin-top:8px">It is permission.</span>
+      </div>
+      <div class="poem-stanza">
+        <span class="poem-line">Permission to be</span>
+        <span class="poem-line indent">grammatically incorrect</span>
+        <span class="poem-line indent indent">and emotionally precise</span>
+        <span class="poem-line indent indent indent">at the same time.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TEACH -->
+  <div id="tab-teach" class="panel">
+    <span class="section-label">The Craft — What Makes It Work</span>
+    <div class="cards">
+      <div class="card">
+        <div class="card-num">01 — Foundation</div>
+        <h3>The Line Break Is a Breath</h3>
+        <p>In spoken word, the line ends where your lungs decide — not where grammar commands. Each break is a pause, a pivot, a place where the audience catches up or falls behind on purpose. Control the breath and you control the room.</p>
+        <div class="example">"I am not angry— / I am a quiet building / on fire."</div>
+      </div>
+      <div class="card">
+        <div class="card-num">02 — Sound</div>
+        <h3>Repetition Is a Drum</h3>
+        <p>Anaphora (repeating a phrase at the start of lines) creates rhythm, builds tension, and signals that something matters. The audience begins to feel it before they understand it. That's the goal — <em>feeling before meaning</em>.</p>
+        <div class="example">"I am made of / I am made of / I am made of everything they said I wasn't."</div>
+      </div>
+      <div class="card">
+        <div class="card-num">03 — Image</div>
+        <h3>The Concrete Carries the Abstract</h3>
+        <p>Don't say "grief." Say "the coffee mug she left / still in the cabinet / that I keep moving to the back." Specific images carry universal weight. The more particular, the more everyone recognizes it.</p>
+        <div class="example">"Not loneliness — / the second toothbrush / I haven't thrown out."</div>
+      </div>
+      <div class="card">
+        <div class="card-num">04 — Delivery</div>
+        <h3>Pace Is Meaning</h3>
+        <p>Rush through the part that hurts — the audience feels the avoidance. Slow to almost silence on the line that is true — they lean in. Your voice is an instrument with volume, tempo, pitch, and space. Use all of them deliberately.</p>
+      </div>
+      <div class="card">
+        <div class="card-num">05 — Structure</div>
+        <h3>The Turn Changes Everything</h3>
+        <p>Every strong spoken word poem has a <em>volta</em> — a turn where the poem becomes something other than what it began as. Build toward it. The turn is the gift. Without it, you have a statement. With it, you have a poem.</p>
+        <div class="example">"I used to think home was a place — / then I met you / and realized it was a posture."</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PITCH -->
+  <div id="tab-pitch" class="panel">
+    <span class="section-label">Why It Matters — The Case for Spoken Word</span>
+    <div class="manifesto">
+      <div class="manif-item">
+        <div class="manif-num">I</div>
+        <div class="manif-body">
+          <h3>The Oldest Technology</h3>
+          <p>Before the printing press. Before the alphabet. Before the clay tablet. <strong>There was the voice.</strong> Spoken word is not a trend — it is a return. A remembering that stories were always meant to live in air, not on page.</p>
+        </div>
+      </div>
+      <div class="manif-item">
+        <div class="manif-num">II</div>
+        <div class="manif-body">
+          <h3>It Bypasses the Editor in Your Head</h3>
+          <p>Writing lets you revise until the danger is gone. <strong>Speaking does not.</strong> That tremor in the voice, that pause you didn't plan — these are not mistakes. They are evidence. And audiences recognize evidence when they hear it.</p>
+        </div>
+      </div>
+      <div class="manif-item">
+        <div class="manif-num">III</div>
+        <div class="manif-body">
+          <h3>It Democratizes Literature</h3>
+          <p>You don't need a publisher. You don't need an MFA. You need a microphone, or a street corner, or a kitchen table. <strong>Spoken word belongs to anyone who speaks.</strong> That is radical. That is necessary.</p>
+        </div>
+      </div>
+      <div class="manif-item">
+        <div class="manif-num">IV</div>
+        <div class="manif-body">
+          <h3>It Is Political by Nature</h3>
+          <p>To speak in public about what you've survived is an act of resistance. Spoken word gave voice to the Harlem Renaissance, to the Civil Rights movement, to Slam poetry's working class fury. <strong>Language, when spoken aloud, refuses to stay private.</strong></p>
+        </div>
+      </div>
+      <div class="manif-item">
+        <div class="manif-num">V</div>
+        <div class="manif-body">
+          <h3>The Room Changes You</h3>
+          <p>A poem read alone changes the reader. A poem spoken to 200 people changes <strong>the poet.</strong> You cannot stand before a crowd and say the true thing and remain who you were before you said it. This is transformation in real time.</p>
+        </div>
+      </div>
+      <div class="manif-item">
+        <div class="manif-num">VI</div>
+        <div class="manif-body">
+          <h3>All That Is Not Necessary</h3>
+          <p>You do not need: <strong>rhyme</strong> (unless it arrives naturally). <strong>Meter</strong> (unless you mean it). <strong>Permission</strong>. <strong>A finished draft</strong>. You only need the thing that won't stop making noise inside you. Start there. That is enough. That has always been enough.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STITCH -->
+  <div id="tab-stitch" class="panel">
+    <div class="write-area">
+      <div class="write-top">
+        <div class="write-prompt" id="current-prompt">"Begin with a place. Make it a feeling."</div>
+        <div class="save-status" id="save-status">unsaved</div>
+      </div>
+
+      <input type="text" class="title-input" id="poem-title" placeholder="Give this piece a title…" oninput="onEdit()">
+
+      <div class="write-controls">
+        <button class="btn red-btn" onclick="newPrompt()">New prompt</button>
+        <button class="btn" onclick="saveToLibrary()">Save to Library</button>
+        <button class="btn ghost" onclick="newSession()">New session</button>
+        <button class="btn ghost" id="copy-btn" onclick="copyText()">Copy</button>
+      </div>
+
+      <textarea id="poet-pad" placeholder="Write here. No one is watching. No one is judging. Just the line and the breath and whatever comes next…" oninput="onEdit()"></textarea>
+
+      <div class="write-footer">
+        <div class="counter" id="counter">0 words</div>
+        <div class="counter" id="session-time"></div>
+      </div>
+
+      <span class="section-label" style="margin-top:40px;">Prompts to crack you open</span>
+      <div class="prompts-grid" id="prompts-grid"></div>
+    </div>
+  </div>
+
+  <!-- LIBRARY -->
+  <div id="tab-library" class="panel">
+    <div class="library-area">
+      <div class="library-header">
+        <span class="section-label" style="margin-bottom:0">Your Writings</span>
+        <span class="lib-stats" id="lib-stats"></span>
+      </div>
+      <input type="text" class="lib-search" id="lib-search" placeholder="Search by title or content…" oninput="renderLibrary()">
+      <div class="lib-list" id="lib-list"></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>Spoken Word</span>
+    <div>Tell &bull; Teach &bull; Pitch &bull; Stitch &bull; <span>Library</span></div>
+  </div>
+
+</div>
+
+<script>
+/* ══════════════════════════════════════
+   STORAGE
+══════════════════════════════════════ */
+const LIB_KEY   = 'spoken-word-library-v1';
+const DRAFT_KEY = 'spoken-word-draft-v1';
+
+function loadLibrary() {
+  try { return JSON.parse(localStorage.getItem(LIB_KEY)) || []; } catch { return []; }
+}
+function saveLibrary(lib) {
+  localStorage.setItem(LIB_KEY, JSON.stringify(lib));
+  updateBadge();
+}
+function loadDraft() {
+  try { return JSON.parse(localStorage.getItem(DRAFT_KEY)) || {}; } catch { return {}; }
+}
+function saveDraft(d) {
+  localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
+}
+
+/* ══════════════════════════════════════
+   PROMPTS
+══════════════════════════════════════ */
+const ALL_PROMPTS = [
+  "Begin with a place. Make it a feeling.",
+  "Write about something you lost that nobody noticed.",
+  "Start with the word 'Before'.",
+  "Write the speech you never gave at the funeral.",
+  "Describe anger as if it were weather.",
+  "Write to the version of yourself at 14.",
+  "Begin: 'They don't tell you that...'",
+  "Write about something you carry that has no name.",
+  "Start with a smell. End somewhere unexpected.",
+  "Write a love poem to something most people hate.",
+  "Begin with a body part that holds a secret.",
+  "Write about the moment just before everything changed.",
+  "Start with the phrase: 'In my country—'",
+  "Write about what you practice in the dark.",
+  "Begin with silence. Describe what's inside it.",
+  "Write about the thing you keep starting and stopping."
+];
+
+function shuffled(arr) { return [...arr].sort(() => Math.random() - 0.5); }
+
+let promptPool = shuffled(ALL_PROMPTS);
+let promptIndex = 0;
+let currentPrompt = promptPool[0];
+
+function newPrompt() {
+  promptIndex = (promptIndex + 1) % promptPool.length;
+  currentPrompt = promptPool[promptIndex];
+  const el = document.getElementById('current-prompt');
+  el.textContent = '"' + currentPrompt + '"';
+  el.style.animation = 'none';
+  requestAnimationFrame(() => { el.style.animation = 'rise 0.5s ease forwards'; });
+  onEdit();
+}
+
+function buildPromptsGrid() {
+  const grid = document.getElementById('prompts-grid');
+  const picks = shuffled(ALL_PROMPTS).slice(0, 6);
+  grid.innerHTML = picks.map(p =>
+    `<button class="prompt-chip" onclick="usePrompt('${p.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">` + p + `</button>`
+  ).join('');
+}
+
+function usePrompt(text) {
+  currentPrompt = text;
+  document.getElementById('current-prompt').textContent = '"' + text + '"';
+  document.getElementById('poet-pad').focus();
+  onEdit();
+}
+
+/* ══════════════════════════════════════
+   SESSION + AUTO-SAVE
+══════════════════════════════════════ */
+let sessionStart = Date.now();
+let saveTimer    = null;
+
+function onEdit() {
+  updateCounter();
+  setStatus('saving…', false);
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    saveDraft({
+      title:  document.getElementById('poem-title').value,
+      text:   document.getElementById('poet-pad').value,
+      prompt: currentPrompt,
+      ts:     Date.now()
+    });
+    setStatus('auto-saved', true);
+  }, 800);
+}
+
+function setStatus(msg, ok) {
+  const el = document.getElementById('save-status');
+  el.textContent = msg;
+  el.className = 'save-status' + (ok ? ' ok' : '');
+}
+
+function updateCounter() {
+  const words = document.getElementById('poet-pad').value.trim().split(/\s+/).filter(Boolean).length;
+  document.getElementById('counter').textContent = words + (words === 1 ? ' word' : ' words');
+  tickSession();
+}
+
+function tickSession() {
+  const mins = Math.floor((Date.now() - sessionStart) / 60000);
+  document.getElementById('session-time').textContent = mins < 1 ? 'just started' : mins + ' min session';
+}
+
+setInterval(tickSession, 30000);
+
+function newSession() {
+  const text = document.getElementById('poet-pad').value.trim();
+  if (text && !confirm('Start a fresh session? Your draft is auto-saved and accessible in Library.')) return;
+  document.getElementById('poet-pad').value = '';
+  document.getElementById('poem-title').value = '';
+  sessionStart = Date.now();
+  updateCounter();
+  setStatus('new session', false);
+  saveDraft({});
+}
+
+function copyText() {
+  const t = document.getElementById('poet-pad').value;
+  if (!t.trim()) return;
+  navigator.clipboard.writeText(t).then(() => {
+    const btn = document.getElementById('copy-btn');
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = orig, 1500);
+  });
+}
+
+/* ══════════════════════════════════════
+   SAVE TO LIBRARY
+══════════════════════════════════════ */
+function saveToLibrary() {
+  const text = document.getElementById('poet-pad').value.trim();
+  if (!text) { alert('Nothing to save yet — write something first.'); return; }
+
+  const lib = loadLibrary();
+  const entry = {
+    id:              Date.now().toString(),
+    title:           document.getElementById('poem-title').value.trim() || 'Untitled',
+    text,
+    prompt:          currentPrompt,
+    words:           text.split(/\s+/).filter(Boolean).length,
+    ts:              Date.now(),
+    sessionMinutes:  Math.floor((Date.now() - sessionStart) / 60000)
+  };
+
+  lib.unshift(entry);
+  saveLibrary(lib);
+  setStatus('saved to library ✓', true);
+
+  // Flash badge green briefly
+  const badge = document.getElementById('lib-count');
+  badge.style.background = '#27ae60';
+  setTimeout(() => badge.style.background = '', 1500);
+}
+
+/* ══════════════════════════════════════
+   LIBRARY RENDER
+══════════════════════════════════════ */
+function formatDate(ts) {
+  const d = new Date(ts);
+  return d.toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'})
+    + ' · ' + d.toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'});
+}
+
+function updateBadge() {
+  const n = loadLibrary().length;
+  document.getElementById('lib-count').textContent = n;
+}
+
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderLibrary() {
+  const lib   = loadLibrary();
+  const query = (document.getElementById('lib-search')?.value || '').toLowerCase().trim();
+  const list  = document.getElementById('lib-list');
+  const stats = document.getElementById('lib-stats');
+
+  const filtered = query
+    ? lib.filter(e => e.title.toLowerCase().includes(query) || e.text.toLowerCase().includes(query))
+    : lib;
+
+  const totalWords = lib.reduce((s, e) => s + (e.words || 0), 0);
+  stats.textContent = lib.length + ' piece' + (lib.length !== 1 ? 's' : '') + ' · ' + totalWords.toLocaleString() + ' words total';
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="lib-empty">
+      <p>${query ? 'Nothing matching "' + esc(query) + '"' : 'Your library is empty.'}</p>
+      <small>${query ? 'Try different keywords.' : 'Write something in Stitch and hit Save to Library.'}</small>
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(e => `
+    <div class="lib-entry" onclick="openEntry('${e.id}')">
+      <div>
+        <div class="lib-title">${esc(e.title)}</div>
+        <div class="lib-meta">${formatDate(e.ts)} &bull; ${e.words || '?'} words${e.sessionMinutes > 0 ? ' &bull; ' + e.sessionMinutes + ' min session' : ''}</div>
+        <div class="lib-preview">${esc(e.text)}</div>
+      </div>
+      <div class="lib-actions" onclick="event.stopPropagation()">
+        <button class="lib-btn" onclick="openEntry('${e.id}')">Read</button>
+        <button class="lib-btn del" onclick="deleteEntry('${e.id}')">Delete</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function deleteEntry(id) {
+  if (!confirm('Delete this piece permanently?')) return;
+  saveLibrary(loadLibrary().filter(e => e.id !== id));
+  renderLibrary();
+}
+
+/* ══════════════════════════════════════
+   MODAL — READ VIEW
+══════════════════════════════════════ */
+let activeModalId = null;
+
+function openEntry(id) {
+  const e = loadLibrary().find(x => x.id === id);
+  if (!e) return;
+  activeModalId = id;
+
+  document.getElementById('modal-meta').textContent        = formatDate(e.ts) + ' · ' + (e.words || '?') + ' words' + (e.sessionMinutes > 0 ? ' · ' + e.sessionMinutes + ' min session' : '');
+  document.getElementById('modal-prompt-text').textContent = e.prompt ? 'Prompt: "' + e.prompt + '"' : '';
+  document.getElementById('modal-title').textContent       = e.title;
+  document.getElementById('modal-body').textContent        = e.text;
+  document.getElementById('modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  document.body.style.overflow = '';
+  activeModalId = null;
+}
+
+function closeModalOutside(e) {
+  if (e.target === document.getElementById('modal')) closeModal();
+}
+
+function copyModal() {
+  navigator.clipboard.writeText(document.getElementById('modal-body').textContent);
+}
+
+function editEntry() {
+  const e = loadLibrary().find(x => x.id === activeModalId);
+  if (!e) return;
+  closeModal();
+  document.getElementById('poet-pad').value   = e.text;
+  document.getElementById('poem-title').value = e.title;
+  currentPrompt = e.prompt || currentPrompt;
+  document.getElementById('current-prompt').textContent = '"' + currentPrompt + '"';
+  updateCounter();
+  // Switch to stitch tab
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-stitch').classList.add('active');
+  document.querySelector('.tab[onclick*="stitch"]').classList.add('active');
+  document.getElementById('poet-pad').focus();
+}
+
+/* ══════════════════════════════════════
+   TAB SWITCHING
+══════════════════════════════════════ */
+function switchTab(name, el) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  el.classList.add('active');
+  if (name === 'stitch')  buildPromptsGrid();
+  if (name === 'library') renderLibrary();
+}
+
+/* ══════════════════════════════════════
+   INIT
+══════════════════════════════════════ */
+(function init() {
+  updateBadge();
+  buildPromptsGrid();
+
+  const draft = loadDraft();
+  if (draft.text) {
+    document.getElementById('poet-pad').value   = draft.text;
+    document.getElementById('poem-title').value = draft.title || '';
+    if (draft.prompt) {
+      currentPrompt = draft.prompt;
+      document.getElementById('current-prompt').textContent = '"' + currentPrompt + '"';
+    }
+    updateCounter();
+    setStatus('draft restored', true);
+    setTimeout(() => setStatus('auto-saved', true), 2000);
+  }
+
+  // Keyboard shortcut: Cmd/Ctrl+S → save to library
+  document.addEventListener('keydown', e => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+      e.preventDefault();
+      saveToLibrary();
+    }
+  });
+})();
+</script>
+</body>
+</html>
